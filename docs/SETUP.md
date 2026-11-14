@@ -114,7 +114,7 @@ Yes, and CI proves it on every push:
 * **Pinned versions** in `requirements-lock.txt`, and a fixed random seed.
 * **The CI matrix** runs tests, the pipeline and validation on **Ubuntu, Windows and macOS × Python 3.10 and 3.12**.
 * **A fingerprint** (SHA-256 of every gold table in canonical form) is computed in each environment. The `reproducibility` job fails unless all six match, and it writes a table of them to the run summary.
-  The current local fingerprint is `8461725598dd5522`; the CI run summary shows all six environments matching it on every push.
+  The current local fingerprint is `9f0e8c244f097eef`; the CI run summary shows all six environments matching it on every push.
 * **Stable history:** extending the end date never changes earlier files (each month has its own random stream). A test enforces this, which is what makes the daily live mode trustworthy.
 * **Same code, three runtimes:** your laptop, GitHub Actions, and Databricks serverless (only `storage.py` differs).
 * **Devcontainer** for an identical environment anywhere.

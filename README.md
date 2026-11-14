@@ -162,7 +162,7 @@ pip install -e ".[dev]" -c requirements-lock.txt
 vip-refresh --base data --market simulated     # deterministic: no network dependency
 ```
 
-The run should end with gold fingerprint `8461725598dd5522` and 19/19 validation gates passed, matching [docs/validation_report.md](docs/validation_report.md). The guarantees behind that:
+The run should end with gold fingerprint `9f0e8c244f097eef` and 19/19 validation gates passed, matching [docs/validation_report.md](docs/validation_report.md). The guarantees behind that:
 
 * **Pinned dependencies** in `requirements-lock.txt` and a fixed random seed (vary it deliberately with `--seed`).
 * **CI matrix:** tests, the full pipeline, and validation run on Ubuntu, Windows, and macOS × Python 3.10 and 3.12 on every push.

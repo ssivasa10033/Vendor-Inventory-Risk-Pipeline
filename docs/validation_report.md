@@ -1,6 +1,6 @@
 # Validation report
 
-_Generated 2026-11-14 22:10 UTC by `vip-validate`. Gold fingerprint: `8461725598dd5522`_
+_Generated 2026-11-14 22:25 UTC by `vip-validate`. Gold fingerprint: `9f0e8c244f097eef`_
 
 **Result: ALL GATES PASSED** (19/19 gates)
 
@@ -30,7 +30,7 @@ scores its outputs against them.
 | 5. Billing | overbilled lines found (recall) | 1 | ≥ 0.9 | ✅ | 40 truly overbilled |
 | 5. Billing | overbilling flags correct (precision) | 1 | ≥ 0.95 | ✅ | 40 flagged |
 | 6. Stockouts | rank corr: emergency buys vs true stockout days | 0.8352 | ≥ 0.6 | ✅ | emergency walk-in buys are the only stockout evidence in the exports |
-| 7. Reproducibility | gold fingerprint | 8461725598dd5522 |  |  |  |
+| 7. Reproducibility | gold fingerprint | 9f0e8c244f097eef |  |  |  |
 
 ## Vendor parameters recovered from the data
 

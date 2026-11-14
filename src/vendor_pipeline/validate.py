@@ -63,7 +63,8 @@ def fingerprint(gold: dict[str, pd.DataFrame]) -> str:
                 out[c] = col.map(lambda v: "" if v is None or (isinstance(v, float) and np.isnan(v)) or v is pd.NA else str(v))
         df = out.sort_values(list(out.columns)).reset_index(drop=True)
         h.update(name.encode())
-        h.update(df.to_csv(index=False).encode())
+        # lineterminator pinned: to_csv defaults to os.linesep, which would split the fingerprint by OS
+        h.update(df.to_csv(index=False, lineterminator="\n").encode())
     return h.hexdigest()[:16]
 
 
