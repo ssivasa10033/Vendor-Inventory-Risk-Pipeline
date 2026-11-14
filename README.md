@@ -3,7 +3,6 @@
 ![CI](https://github.com/ssivasa10033/Vendor-Inventory-Risk-Pipeline/actions/workflows/ci-cd.yml/badge.svg)
 ![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue)
 ![Validated](https://img.shields.io/badge/accuracy_gates-19%2F19_passed-brightgreen)
-![Reproducible](https://img.shields.io/badge/gold_fingerprint-identical_on_6_environments-brightgreen)
 
 A data pipeline that turns messy small-business vendor exports into decision-ready supplier-risk and inventory tables, refreshed daily, with its accuracy measured against known ground truth. It runs identically on a laptop, in GitHub Actions, and on Databricks (Free Edition is sufficient). Market prices come from real Statistics Canada open data; the transactions are simulated for reasons explained in [Why the data is simulated](#why-the-data-is-simulated).
 
@@ -12,14 +11,14 @@ A data pipeline that turns messy small-business vendor exports into decision-rea
 | | |
 |---|---|
 | Get running in 2 minutes | [Getting started](#getting-started) · full walkthrough in [docs/SETUP.md](docs/SETUP.md) |
-| Accuracy evidence | [docs/validation_report.md](docs/validation_report.md) — 19/19 gates passed against hidden ground truth |
-| Reproducibility evidence | [Reproducibility](#reproducibility-and-replication) — one fingerprint across 3 OSes × 2 Python versions |
+| Accuracy evidence | [docs/validation_report.md](docs/validation_report.md): 19/19 gates passed against hidden ground truth |
+| Reproducibility evidence | [Reproducibility](#reproducibility-and-replication): one fingerprint across 3 OSes × 2 Python versions |
 | Analyze your own data | [Use it with your own data](#use-it-with-your-own-data) |
 | The build series | [Video series](#the-video-series) |
 
 ## Background
 
-In fall 2025, a family catering kitchen and café changed owners. The previous owner's vendor and inventory history was a pile of exports: invoices with vendor names spelled 29 different ways, four date formats in one column, prices stored as `"$1,234.50"` strings, pounds mixed with kilograms, count sheets reading `chkn brst` — and no usage records at all, because the kitchen cooked from memory.
+In fall 2025, a family catering kitchen and café changed owners. The previous owner's vendor and inventory history was a pile of exports: invoices with vendor names spelled 29 different ways, four date formats in one column, prices stored as `"$1,234.50"` strings, pounds mixed with kilograms, count sheets reading `chkn brst`, and no usage records at all, because the kitchen cooked from memory.
 
 The new owners needed answers those files could not give directly:
 
@@ -32,13 +31,13 @@ This repository is a rebuild of that project. The original data belongs to the b
 
 ## Use cases
 
-**Analyze your own purchasing and inventory data.** Any operation that buys from vendors and holds stock — a restaurant, retailer, workshop, clinic — produces the same six kinds of records this pipeline ingests. Put your exports in the documented layout, validate them with `vip-check-data`, and the same cleaning, risk scoring, and dashboard apply. Everything runs locally; no data leaves your machine. See [Use it with your own data](#use-it-with-your-own-data).
+**Analyze your own purchasing and inventory data.** Any operation that buys from vendors and holds stock (a restaurant, retailer, workshop, clinic) produces the same six kinds of records this pipeline ingests. Put your exports in the documented layout, validate them with `vip-check-data`, and the same cleaning, risk scoring, and dashboard apply. Everything runs locally; no data leaves your machine. See [Use it with your own data](#use-it-with-your-own-data).
 
 **A reference implementation to learn from or build on.** The repository demonstrates, end to end: a medallion (bronze/silver/gold) architecture in plain pandas, defensive data cleaning with quarantine instead of silent drops, a data quality gate wired into CI, accuracy validation against ground truth, cross-platform reproducibility checks, one codebase targeting both local files and Databricks Delta tables, and scheduled daily refreshes. Each concern lives in its own small module.
 
-**A teaching and interview dataset with an answer key.** The simulator writes the true answers (real usage, injected errors, overbilled lines) to a folder the pipeline never reads. That makes it useful for practicing or teaching data cleaning: every technique can be scored, not just eyeballed. Break something deliberately — lower the fuzzy-match cutoff in `silver.py`, delete a cleaning rule — and watch the validation gates fail with numbers attached.
+**A teaching and interview dataset with an answer key.** The simulator writes the true answers (real usage, injected errors, overbilled lines) to a folder the pipeline never reads. That makes it useful for practicing or teaching data cleaning: every technique can be scored, not just eyeballed. Break something deliberately, such as lowering the fuzzy-match cutoff in `silver.py` or deleting a cleaning rule, and watch the validation gates fail with numbers attached.
 
-**Daily operations, automated.** With the scheduled workflows enabled, every morning the pipeline lands yesterday's activity, rebuilds every table, re-scores accuracy, and publishes headline KPIs and recommended actions (reorder quantities, vendors to watch, billing exceptions) to the run summary — the same tables a Power BI report can consume.
+**Daily operations, automated.** With the scheduled workflows enabled, every morning the pipeline lands yesterday's activity, rebuilds every table, re-scores accuracy, and publishes headline KPIs and recommended actions (reorder quantities, vendors to watch, billing exceptions) to the run summary: the same tables a Power BI report can consume.
 
 ## Architecture
 
@@ -53,16 +52,16 @@ This repository is a rebuild of that project. The original data belongs to the b
             └──────── GitHub Actions: lint → tests → full run → deploy bundle ┘
 ```
 
-* **Bronze** — raw files landed as-is, every column a string, stamped with source file and load time, so silver logic can always be replayed from the originals.
-* **Silver** — cleaned and conformed: one ID per vendor and item, one base unit, explicit date parsing, duplicates and typos caught. Rows that cannot be confidently fixed go to `silver_quarantine` with a `_reason`; nothing is silently dropped.
-* **Gold** — one table per business question (below), written as Parquet and CSV locally, and as Delta tables on Databricks.
-* **Quality gate** — `quality.py` fails the run, and the CI build, if quarantine rates or null keys cross thresholds.
+* **Bronze**: raw files landed as-is, every column a string, stamped with source file and load time, so silver logic can always be replayed from the originals.
+* **Silver**: cleaned and conformed, with one ID per vendor and item, one base unit, explicit date parsing, and duplicates and typos caught. Rows that cannot be confidently fixed go to `silver_quarantine` with a `_reason`; nothing is silently dropped.
+* **Gold**: one table per business question (below), written as Parquet and CSV locally, and as Delta tables on Databricks.
+* **Quality gate**: `quality.py` fails the run, and the CI build, if quarantine rates or null keys cross thresholds.
 
 ## What it produces
 
 | Gold table | Question it answers |
 |---|---|
-| `vendor_risk` | Which suppliers are a risk right now, and why? (0–100 score from six explainable signals) |
+| `vendor_risk` | Which suppliers are a risk right now, and why? (0 to 100 score from six explainable signals) |
 | `vendor_scorecard_monthly` | On-time, in-full, OTIF, fill rate, lead time, and spend per vendor per month |
 | `billing_exceptions` | Where were we billed for product that never arrived? |
 | `item_price_monthly` | What are we paying per kg/L/each versus the market benchmark? Month-over-month and year-over-year change |
@@ -75,13 +74,13 @@ This repository is a rebuild of that project. The original data belongs to the b
 
 All of these are injected deliberately by the simulator, so detection can be measured:
 
-* Vendor names typed 29 different ways (`NORTHFIELD FOODSERVICE INC`, `northfield`, `G.T.A. PACKAGING`) — normalized, fuzzy matched, then cross-checked against the SKU's vendor
-* Four date formats in one column — parsed against an explicit format list, never guessed
+* Vendor names typed 29 different ways (`NORTHFIELD FOODSERVICE INC`, `northfield`, `G.T.A. PACKAGING`): normalized, fuzzy matched, then cross-checked against the SKU's vendor
+* Four date formats in one column: parsed against an explicit format list, never guessed
 * `"$1,234.50"` strings; missing prices (imputed from line totals and flagged); decimal-shift typos caught by a rolling-median outlier check
 * Re-sent invoices (duplicate lines) and negative quantities on normal invoices
-* Pounds, kilograms, cases, and dozens — converted to one base unit per item via the vendor catalog
-* Count sheets reading `chkn brst`, `  AP FLOUR `, `cukes` — mapped through an alias table; anything unmapped is quarantined
-* A waste log staff fill in only about 75% of the time — unlogged waste is still accounted for, surfacing as shrink inside derived usage
+* Pounds, kilograms, cases, and dozens: converted to one base unit per item via the vendor catalog
+* Count sheets reading `chkn brst`, `  AP FLOUR `, `cukes`: mapped through an alias table; anything unmapped is quarantined
+* A waste log staff fill in only about 75% of the time; unlogged waste is still accounted for, surfacing as shrink inside derived usage
 
 ## Getting started
 
@@ -111,7 +110,7 @@ Useful variations:
 
 ### The dashboard
 
-Five tabs — Overview, Vendors, Prices vs market, Inventory, Data quality & accuracy — reading the same gold tables Power BI will use, so its layout doubles as the specification for the Power BI rebuild in Episode 2. Each tab explains its own metrics: tooltips on every KPI, and expanders describing how the risk score and inventory calculations work.
+Five tabs (Overview, Vendors, Prices vs market, Inventory, Data quality & accuracy) reading the same gold tables Power BI will use, so its layout doubles as the specification for the Power BI rebuild in Episode 2. Each tab explains its own metrics: tooltips on every KPI, and expanders describing how the risk score and inventory calculations work.
 
 | Vendors | Prices vs market | Data quality |
 |---|---|---|
@@ -145,11 +144,11 @@ The simulator's advantage is that the true answers are known. Real usage, true w
 
 The full report is [docs/validation_report.md](docs/validation_report.md). To see the gates work, lower the fuzzy-match cutoff in `silver.py` from 0.6 to 0.3 and rerun `vip-validate`; the gate fails locally and CI turns red on the push. Running with different seeds (`vip-refresh --seed 1`, `--seed 2`, …) passes on all of them, so the results are not cherry-picked.
 
-A precise statement of scope: the validation proves the *code* is correct — given data with these defects, it recovers the right answers. It does not prove the risk-score *weights* are optimal; those are documented judgment calls, fixed and reported per component.
+A precise statement of scope: the validation proves the *code* is correct, in that given data with these defects it recovers the right answers. It does not prove the risk-score *weights* are optimal; those are documented judgment calls, fixed and reported per component.
 
 ### Why the data is simulated
 
-No public dataset contains a real business's invoices, deliveries, and hand counts together; that data is private everywhere, including at the original business. Simulating the process — not the spreadsheet — is what makes it possible to inject known errors and then measure whether the pipeline catches them. The market benchmark, by contrast, is real: `real_data.py` pulls Statistics Canada monthly average retail prices (table 18-10-0245-01, Ontario) and CPI (18-10-0004-01), and the pipeline uses the real price movement so simulated vendor prices follow real-world swings. Every benchmark row records the exact StatCan series it came from.
+No public dataset contains a real business's invoices, deliveries, and hand counts together; that data is private everywhere, including at the original business. Simulating the process, not the spreadsheet, is what makes it possible to inject known errors and then measure whether the pipeline catches them. The market benchmark, by contrast, is real: `real_data.py` pulls Statistics Canada monthly average retail prices (table 18-10-0245-01, Ontario) and CPI (18-10-0004-01), and the pipeline uses the real price movement so simulated vendor prices follow real-world swings. Every benchmark row records the exact StatCan series it came from.
 
 ## Reproducibility and replication
 
@@ -192,22 +191,22 @@ my-data/raw/
   market/*.csv                       market benchmark (see the guide for options)
 ```
 
-1. Run `vip-refresh` once — the simulator's output in `data/raw/` is a working template of every schema.
+1. Run `vip-refresh` once; the simulator's output in `data/raw/` is a working template of every schema.
 2. Replace the four `reference/` tables with your real vendors, items, units, and count-sheet aliases, and drop your exports into the matching folders.
 3. `vip-check-data --base my-data` validates everything before you run: structure and required columns, date and money formats, and cross-file consistency (invoice SKUs against the catalog, count-sheet names against the aliases, receipts against POs), with specific messages for anything wrong.
 4. `vip-run-pipeline --env local --base my-data`. The quality gate still applies: anything that cannot be conformed lands in `silver_quarantine` with a reason.
 
 The dashboard offers the same flow without a terminal: the sidebar's "Use your own data" panel runs the checker interactively, then runs the pipeline and switches the dashboard to your dataset. Everything stays on your machine.
 
-The complete schema guide — every column, accepted formats, what to do without a market benchmark — is [docs/use-your-own-data.md](docs/use-your-own-data.md). Two things change with real data: `vip-validate` does not apply (it scores against the simulator's hidden truth; with real data the checks are the quality gate, the tests, and reconciliation against your accounting totals), and the July/August planning exclusion in `gold.py` should be adjusted to your own seasonality.
+The complete schema guide (every column, accepted formats, what to do without a market benchmark) is [docs/use-your-own-data.md](docs/use-your-own-data.md). Two things change with real data: `vip-validate` does not apply (it scores against the simulator's hidden truth; with real data the checks are the quality gate, the tests, and reconciliation against your accounting totals), and the July/August planning exclusion in `gold.py` should be adjusted to your own seasonality.
 
 ## CI/CD
 
 `.github/workflows/ci-cd.yml`, on every push and pull request:
 
 1. **Lint** (ruff), then on all six OS/Python combinations: tests → full pipeline run with the quality gate → `vip-validate` accuracy gates → gold fingerprint, plus the quarter-scale validation run on one leg
-2. **Reproducibility** — fails unless all six fingerprints are identical, and writes the comparison table to the run summary
-3. **Deploy** (pushes to `main` only) — `databricks bundle validate`, `deploy -t prod`, then one run; the job skips itself until the `DATABRICKS_HOST` and `DATABRICKS_TOKEN` repository secrets exist
+2. **Reproducibility**: fails unless all six fingerprints are identical, and writes the comparison table to the run summary
+3. **Deploy** (pushes to `main` only): `databricks bundle validate`, `deploy -t prod`, then one run; the job skips itself until the `DATABRICKS_HOST` and `DATABRICKS_TOKEN` repository secrets exist
 
 `.github/workflows/live.yml`, every morning (about 6:17 Toronto time): lands yesterday's activity with real StatCan prices, rebuilds every table, re-scores accuracy, and posts the KPIs and top recommended actions to the run summary. The Databricks job mirrors this at 6:00 with `--end today`.
 
@@ -238,12 +237,12 @@ docs/                         setup guide, validation report, own-data guide, ep
 
 ## How the key metrics work
 
-* **Derived usage:** `opening count + received − logged waste − closing count`. Unlogged waste is counted as usage (shrink), which is realistic — and measurable here: validation shows it adds about 2% over true usage. A test checks derived usage against the hidden truth (correlation above 0.9).
-* **Safety stock** (periodic review, 95% service level): `1.65 × √((L + R)·σd² + d²·σL²)`, where `d` is daily usage, `L` lead time, and `R` the review period — all measured from the data, not assumed.
+* **Derived usage:** `opening count + received − logged waste − closing count`. Unlogged waste is counted as usage (shrink), which is realistic and measurable here: validation shows it adds about 2% over true usage. A test checks derived usage against the hidden truth (correlation above 0.9).
+* **Safety stock** (periodic review, 95% service level): `1.65 × √((L + R)·σd² + d²·σL²)`, where `d` is daily usage, `L` lead time, and `R` the review period, all measured from the data, not assumed.
 * **Reorder point:** `d·L + safety stock`, compared against inventory *position* (on hand plus on order), not just on hand.
 * **Planning usage excludes July and August:** the handover happened in August, and summer volumes would understate what September needs.
-* **Vendor risk score:** a weighted 0–100 from delivery reliability (25%), price volatility and year-over-year change (20%), spend dependency (20%), fill rate (15%), lead-time variability (10%), and overbilling (10%). The weights are fixed, documented, and reported per component.
-* **Recommended actions:** each item passes through a fixed priority ladder — below reorder point, high waste, repeated emergency buys, risky primary vendor, overstocked — and the first rule that fires wins. Every number in an action is measured from that item's own history.
+* **Vendor risk score:** a weighted 0 to 100 score from delivery reliability (25%), price volatility and year-over-year change (20%), spend dependency (20%), fill rate (15%), lead-time variability (10%), and overbilling (10%). The weights are fixed, documented, and reported per component.
+* **Recommended actions:** each item passes through a fixed priority ladder (below reorder point, high waste, repeated emergency buys, risky primary vendor, overstocked) and the first rule that fires wins. Every number in an action is measured from that item's own history.
 
 ## The video series
 
@@ -251,11 +250,11 @@ This repository is being built in public as a YouTube series for people who know
 
 | Episode | Topic | Status |
 |---|---|---|
-| 1 | Messy exports to trusted risk tables: the simulator, the medallion pipeline, proving accuracy, Databricks, CI/CD | in production — [outline](docs/episode-01-outline.md) |
+| 1 | Messy exports to trusted risk tables: the simulator, the medallion pipeline, proving accuracy, Databricks, CI/CD | in production ([outline](docs/episode-01-outline.md)) |
 | 2 | Power BI on the gold tables: rebuilding the dashboard the owners actually used | planned |
 
 Links will appear here as episodes publish.
 
 ---
 
-Built by Seon Siva. Questions and issues are welcome — open one on this repository.
+Built by Seon Siva. Questions and issues are welcome; open one on this repository.
