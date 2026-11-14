@@ -27,7 +27,7 @@ The new owners needed answers those files could not give directly:
 * What are we overpaying relative to the market?
 * What do we actually use each week, and what should we reorder today?
 
-This repository is a rebuild of that project. The original data belongs to the business, so `simulate.py` recreates it: a day-by-day model of the kitchen (seasonal demand, ordering, late and short deliveries, spoilage, weekly hand counts) exported with the same defects real small-business systems produce.
+This repository is a rebuild of that pipeline project in fall 2025. The original data belongs to the business, so `simulate.py` recreates it: a day-by-day model of the kitchen (seasonal demand, ordering, late and short deliveries, spoilage, weekly hand counts) exported with the same defects real small-business systems produce. This is a replication with improvements of my original work done at Divine Cuisine as a Data Analyst. 
 
 ## Use cases
 
