@@ -1,0 +1,11 @@
+# Pinned versions used by CI on every OS / Python version, so results are byte-for-byte comparable.
+# Install with:  pip install -e ".[dev,dashboard]" -c requirements-lock.txt
+pandas==2.2.3
+numpy==2.1.3
+pyarrow==18.1.0
+tabulate==0.9.0
+pytest==8.3.4
+ruff==0.8.4
+build==1.2.2.post1
+streamlit==1.41.1
+plotly==5.24.1

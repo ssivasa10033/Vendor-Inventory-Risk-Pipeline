@@ -1,0 +1,126 @@
+name: CI/CD
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash   # same scripts on Linux, macOS and Windows runners
+
+jobs:
+  # ------------------------------------------------------------------ lint (once)
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install ruff==0.8.4
+      - run: ruff check src tests dashboard
+
+  # ------------------------------------------------------------------ test + validate on 3 OSes x 2 Pythons
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python: ["3.10", "3.12"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+      - name: Install (pinned)
+        run: pip install -e ".[dev]" -c requirements-lock.txt
+      - name: Unit + integration tests
+        run: pytest -q
+      - name: Full pipeline on simulated data (data quality gate)
+        run: |
+          vip-land-raw --env local --base data --market simulated
+          vip-run-pipeline --env local --base data
+      - name: Accuracy vs ground truth (validation gates)
+        run: vip-validate --base data --report data/validation_report.md
+      - name: Accuracy holds at a different business size (one leg only)
+        if: matrix.os == 'ubuntu-latest' && matrix.python == '3.12'
+        run: |
+          vip-land-raw --env local --base data-small --market simulated --scale 0.25
+          vip-run-pipeline --env local --base data-small
+          vip-validate --base data-small
+      - name: Record fingerprint
+        run: |
+          fp=$(python -c "from vendor_pipeline.validate import fingerprint, GOLD_TABLES; from vendor_pipeline.storage import LocalStorage as L; s=L('data'); print(fingerprint({t: s.read('gold', t) for t in GOLD_TABLES}))")
+          echo "${{ matrix.os }} py${{ matrix.python }} $fp" > fingerprint-${{ matrix.os }}-${{ matrix.python }}.txt
+          cat fingerprint-*.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fp-${{ matrix.os }}-${{ matrix.python }}
+          path: fingerprint-*.txt
+      - name: Upload gold tables + validation report (one leg only)
+        if: matrix.os == 'ubuntu-latest' && matrix.python == '3.12'
+        uses: actions/upload-artifact@v4
+        with:
+          name: gold-tables-and-report
+          path: |
+            data/gold/*.csv
+            data/validation_report.md
+          retention-days: 14
+
+  # ------------------------------------------------------------------ prove reproducibility across environments
+  reproducibility:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { pattern: "fp-*", merge-multiple: true }
+      - name: Every OS / Python must produce the identical gold fingerprint
+        run: |
+          {
+            echo "### Reproducibility: gold-table fingerprint per environment"
+            echo '| Environment | Fingerprint |'; echo '|---|---|'
+            cat fingerprint-*.txt | awk '{print "| " $1 " " $2 " | `" $3 "` |"}'
+          } >> "$GITHUB_STEP_SUMMARY"
+          n=$(cut -d' ' -f3 fingerprint-*.txt | sort -u | wc -l)
+          echo "distinct fingerprints: $n"; test "$n" -eq 1
+
+  # ------------------------------------------------------------------ CD: main branch only
+  deploy:
+    needs: [lint, test, reproducibility]
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+      DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip if Databricks secrets aren't set
+        id: guard
+        run: |
+          if [ -z "$DATABRICKS_HOST" ] || [ -z "$DATABRICKS_TOKEN" ]; then
+            echo "No Databricks secrets configured; skipping deploy."; echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/setup-python@v5
+        if: steps.guard.outputs.skip != 'true'
+        with: { python-version: "3.11" }
+      - run: pip install build
+        if: steps.guard.outputs.skip != 'true'
+      - uses: databricks/setup-cli@main
+        if: steps.guard.outputs.skip != 'true'
+      - name: Validate bundle
+        if: steps.guard.outputs.skip != 'true'
+        run: databricks bundle validate -t prod
+      - name: Deploy bundle (builds + uploads wheel, updates the job)
+        if: steps.guard.outputs.skip != 'true'
+        run: databricks bundle deploy -t prod
+      - name: Run the job once and wait for it
+        if: steps.guard.outputs.skip != 'true'
+        run: databricks bundle run vendor_inventory_pipeline -t prod

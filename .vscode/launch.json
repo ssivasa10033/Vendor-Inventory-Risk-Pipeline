@@ -1,0 +1,13 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    { "name": "Debug: run pipeline", "type": "debugpy", "request": "launch",
+      "module": "vendor_pipeline.jobs", "args": ["run", "--env", "local", "--base", "data"],
+      "env": { "PYTHONPATH": "${workspaceFolder}/src" }, "justMyCode": false },
+    { "name": "Debug: land raw data", "type": "debugpy", "request": "launch",
+      "module": "vendor_pipeline.jobs", "args": ["land", "--env", "local", "--base", "data", "--market", "simulated"],
+      "env": { "PYTHONPATH": "${workspaceFolder}/src" } },
+    { "name": "Debug: dashboard", "type": "debugpy", "request": "launch",
+      "module": "streamlit", "args": ["run", "dashboard/app.py"] }
+  ]
+}

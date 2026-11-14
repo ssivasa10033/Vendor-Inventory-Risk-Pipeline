@@ -1,0 +1,21 @@
+{
+  // Terminal > Run Task...  (or Ctrl/Cmd+Shift+P -> "Tasks: Run Task")
+  "version": "2.0.0",
+  "tasks": [
+    { "label": "1. Land raw data (simulated history)", "type": "shell",
+      "command": "vip-land-raw --env local --base data --market auto" },
+    { "label": "2. Run pipeline (bronze -> silver -> gold)", "type": "shell",
+      "command": "vip-run-pipeline --env local --base data" },
+    { "label": "3. Validate accuracy vs ground truth", "type": "shell",
+      "command": "vip-validate --base data" },
+    { "label": "Full refresh (1 + 2 + 3)", "type": "shell", "command": "vip-refresh --base data",
+      "group": { "kind": "build", "isDefault": true } },
+    { "label": "Full refresh - LIVE (through yesterday, real prices)", "type": "shell",
+      "command": "vip-refresh --base data --end today --market auto" },
+    { "label": "Fetch real StatCan prices", "type": "shell", "command": "vip-fetch-market --out data/external" },
+    { "label": "Dashboard", "type": "shell", "command": "streamlit run dashboard/app.py", "isBackground": true,
+      "problemMatcher": [] },
+    { "label": "Tests", "type": "shell", "command": "pytest -q", "group": { "kind": "test", "isDefault": true } },
+    { "label": "Lint", "type": "shell", "command": "ruff check src tests dashboard" }
+  ]
+}

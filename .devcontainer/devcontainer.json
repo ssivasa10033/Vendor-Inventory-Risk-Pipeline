@@ -1,0 +1,15 @@
+{
+  // Open in GitHub Codespaces or VS Code "Reopen in Container": identical environment for anyone.
+  "name": "vendor-inventory-pipeline",
+  "image": "mcr.microsoft.com/devcontainers/python:3.12",
+  "postCreateCommand": "pip install -e '.[dev,dashboard]' -c requirements-lock.txt && vip-refresh --base data --market simulated",
+  "forwardPorts": [8501],
+  "portsAttributes": { "8501": { "label": "Dashboard", "onAutoForward": "openBrowser" } },
+  "customizations": {
+    "vscode": {
+      "extensions": ["ms-python.python", "charliermarsh.ruff", "databricks.databricks",
+                     "redhat.vscode-yaml", "github.vscode-github-actions"],
+      "settings": { "python.defaultInterpreterPath": "/usr/local/bin/python" }
+    }
+  }
+}

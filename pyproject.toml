@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vendor_pipeline"
+version = "0.1.0"
+description = "Vendor + inventory risk pipeline (Pandas/NumPy) for a small catering kitchen, deployable to Databricks"
+requires-python = ">=3.10"
+dependencies = [
+  "pandas>=2.1",
+  "numpy>=1.24",
+  "pyarrow>=14",
+  "tabulate>=0.9",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.5", "build"]
+dashboard = ["streamlit>=1.36", "plotly>=5.20"]
+
+[project.scripts]
+vip-land-raw = "vendor_pipeline.jobs:land_raw_main"
+vip-run-pipeline = "vendor_pipeline.jobs:run_pipeline_main"
+vip-fetch-market = "vendor_pipeline.real_data:main"
+vip-check-data = "vendor_pipeline.checkdata:main"
+vip-validate = "vendor_pipeline.validate:main"
+vip-refresh = "vendor_pipeline.jobs:refresh_main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 130
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+ignore = ["B023", "B905", "E501"]  # long lines are the item tables in config.py

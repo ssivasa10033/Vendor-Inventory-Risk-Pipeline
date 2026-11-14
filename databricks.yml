@@ -1,0 +1,41 @@
+# Declarative Automation Bundle (formerly "Databricks Asset Bundle").
+# `databricks bundle deploy -t dev` builds the wheel, uploads it, and creates/updates the job.
+bundle:
+  name: vendor-inventory-pipeline
+
+include:
+  - resources/*.yml
+
+artifacts:
+  vendor_pipeline_wheel:
+    type: whl
+    build: python -m build --wheel
+    path: .
+    dynamic_version: true   # stamps each build so serverless never runs a cached old wheel
+
+variables:
+  catalog:
+    description: Unity Catalog catalog (Free Edition gives you "workspace")
+    default: workspace
+  schema:
+    description: Schema that holds the raw volume and the bronze/silver/gold tables
+    default: vendor_inventory
+  end_date:
+    description: Last simulated day. A fixed date replays the handover; "today" = live mode
+    default: "2025-08-31"
+  market:
+    description: real | simulated | auto (Free Edition restricts outbound internet; auto falls back if StatCan is blocked)
+    default: auto
+
+targets:
+  dev:
+    mode: development       # prefixes the job name with [dev you] and keeps schedules paused
+    default: true
+    # host comes from DATABRICKS_HOST (env var) or your ~/.databrickscfg profile
+
+  prod:
+    mode: production
+    variables:
+      end_date: today   # the deployed job keeps landing yesterday's activity every morning
+    workspace:
+      root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}

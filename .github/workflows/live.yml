@@ -1,0 +1,54 @@
+# "Live mode": every morning, land yesterday's activity with REAL StatCan market prices,
+# rebuild every table, re-score accuracy, and publish the headline numbers to the run summary.
+name: Daily live run
+
+on:
+  schedule:
+    - cron: "17 11 * * *"   # ~6:17am Toronto
+  workflow_dispatch:
+
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12", cache: pip }
+      - run: pip install -e . -c requirements-lock.txt
+      - name: Cache StatCan downloads (refreshed weekly by the fetcher)
+        uses: actions/cache@v4
+        with:
+          path: data/external
+          key: statcan-${{ github.run_id }}
+          restore-keys: statcan-
+      - name: Land through yesterday with real market prices
+        run: vip-land-raw --env local --base data --end today --market real
+      - run: vip-run-pipeline --env local --base data
+      - run: vip-validate --base data --report data/validation_report.md
+      - name: Publish headline numbers
+        if: always()
+        run: |
+          python - >> "$GITHUB_STEP_SUMMARY" <<'PY'
+          import pandas as pd
+          k = pd.read_parquet("data/gold/kpi_summary.parquet")
+          print(f"### Vendor & inventory KPIs as of {pd.to_datetime(k['as_of'].iloc[0]):%Y-%m-%d}\n")
+          print("| Metric | Value |\n|---|---|")
+          for r in k.itertuples():
+              v = f"${r.value:,.0f}" if r.unit == "CAD" else f"{r.value:.1%}" if r.unit == "pct" else f"{int(r.value)}"
+              print(f"| {r.metric} | {v} |")
+          h = pd.read_parquet("data/gold/inventory_health.parquet")
+          a = h[h.recommended_action != "No action"].sort_values("item_risk_score", ascending=False).head(8)
+          print("\n### Top actions\n\n| Item | Action |\n|---|---|")
+          for r in a.itertuples():
+              print(f"| {r.item_name} | {r.recommended_action} |")
+          m = pd.read_csv("data/external/statcan_market_index.csv")
+          print(f"\n_Market prices: {m.item_id.nunique()} items on StatCan series, latest month {m.month.max()}_")
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: live-gold-${{ github.run_number }}
+          path: |
+            data/gold/*.csv
+            data/validation_report.md
+            data/external/statcan_market_index.csv
+          retention-days: 30
